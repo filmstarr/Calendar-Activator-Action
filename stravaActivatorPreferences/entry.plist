@@ -1,8 +1,8 @@
 {
     entry = {
-	bundle = preferences;
+	bundle = stravaActivatorPreferences;
 	cell = PSLinkCell;
-	detail = preferencesListController;
+	detail = stravaActivatorPreferencesListController;
 	icon = "icon-small.png";
 	isController = 1;
 	label = "Strava Activator";

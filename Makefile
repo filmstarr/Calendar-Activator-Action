@@ -11,7 +11,7 @@ StravaActivator_FRAMEWORKS = UIKit
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 	
-SUBPROJECTS += preferences
+SUBPROJECTS += stravaActivatorPreferences
 include $(THEOS_MAKE_PATH)/aggregate.mk
 
 after-install::

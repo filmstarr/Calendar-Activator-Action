@@ -1,13 +1,13 @@
 #import <Preferences/Preferences.h>
 
-@interface preferencesListController: PSListController {
+@interface stravaActivatorPreferencesListController: PSListController {
 }
 @end
 
-@implementation preferencesListController
+@implementation stravaActivatorPreferencesListController
 - (id)specifiers {
 	if(_specifiers == nil) {
-		_specifiers = [[self loadSpecifiersFromPlistName:@"preferences" target:self] retain];
+		_specifiers = [[self loadSpecifiersFromPlistName:@"stravaActivatorPreferences" target:self] retain];
 	}
 	return _specifiers;
 }
