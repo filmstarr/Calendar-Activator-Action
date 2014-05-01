@@ -1,0 +1,5 @@
+{
+    title = "Start Strava Recording";
+    description = "Start Strava recoding";
+	group = "Strava";
+}

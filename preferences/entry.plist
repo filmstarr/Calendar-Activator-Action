@@ -1,0 +1,10 @@
+{
+    entry = {
+	bundle = preferences;
+	cell = PSLinkCell;
+	detail = preferencesListController;
+	icon = "icon-small.png";
+	isController = 1;
+	label = "Strava Activator";
+    };
+}

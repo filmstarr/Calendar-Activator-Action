@@ -1,9 +1,9 @@
-Package: com.orikad.calendaractivator
-Name: Calendar Activator Action
-Depends: mobilesubstrate, libactivator
-Version: 0.0.1
+Package: com.filmstarr.stravaactivator
+Name: Strava Activator
+Depends: mobilesubstrate, libactivator, preferenceloader, firmware (>= 7.0)
+Version: 0.1
 Architecture: iphoneos-arm
-Description: Add calendar event with Activator
-Maintainer: Ori Kadosh
-Author: Ori Kadosh
+Description: Strava integration for Activator. Start, stop or toggle Strava recording via your chosen action.
+Maintainer: filmstarr
+Author: filmstarr
 Section: Tweaks

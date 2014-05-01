@@ -1,0 +1,5 @@
+{
+    title = "Toggle Strava Recording";
+    description = "Toggle Strava recoding on/off";
+	group = "Strava";
+}

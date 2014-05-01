@@ -1,0 +1,5 @@
+{
+    title = "Stop Strava Recording";
+    description = "Stop Strava recoding";
+	group = "Strava";
+}
