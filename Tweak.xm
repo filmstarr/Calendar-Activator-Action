@@ -9,16 +9,22 @@
 #define RecordingSucceededNotification "com.filmstarr.stravaactivator.recordingSucceededNotification"
 #define RecordingFailedNotification "com.filmstarr.stravaactivator.recordingFailedNotification"
 #define RecordingProcessedNotification "com.filmstarr.stravaactivator.recordingProcessedNotification"
-#define ToggleRecordingNotification "com.filmstarr.stravaractivator.toggleNotification"
-#define StartRecordingNotification "com.filmstarr.stravaractivator.startNotification"
-#define StopRecordingNotification "com.filmstarr.stravaractivator.stopNotification"
+#define ToggleRecordingNotification "com.filmstarr.stravaactivator.toggleNotification"
+#define StartRecordingNotification "com.filmstarr.stravaactivator.startNotification"
+#define StopRecordingNotification "com.filmstarr.stravaactivator.stopNotification"
+
+#define StravaDisplayIdentifier @"com.strava.stravaride"
+
+enum {
+	STRAVA_ACTIVATOR_NONE = 0x0,
+	STRAVA_ACTIVATOR_TOGGLE = 0x1,
+	STRAVA_ACTIVATOR_START = 0x2,
+	STRAVA_ACTIVATOR_STOP = 0x3,
+};
 
 static StravaAppDelegate *strava = nil;
-static BOOL wasLaunchedWithActivator = NO;
 static BOOL recordingRequestHandled = YES;
-static BOOL isToggling = NO;
-static BOOL isStarting = NO;
-static BOOL isStopping = NO;
+static int stravaAction = STRAVA_ACTIVATOR_NONE;
 
 
 %group springBoardHooks
@@ -26,11 +32,11 @@ static BOOL isStopping = NO;
 %hook SBLockScreenManager
 -(void)_finishUIUnlockFromSource:(int)source withOptions:(id)options {
 	%orig;
-	if (wasLaunchedWithActivator) {
-		SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:@"com.strava.stravaride"];
+	if (stravaAction != STRAVA_ACTIVATOR_NONE) {
+		SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:StravaDisplayIdentifier];
 		if (stravaSBApplication) {
 			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-			if ([[frontApp displayIdentifier] isEqualToString: @"com.strava.stravaride"]) {
+			if ([[frontApp displayIdentifier] isEqualToString: StravaDisplayIdentifier]) {
 				notify_post(RecordingRequestedNotification);
 			}
 			else {
@@ -40,18 +46,18 @@ static BOOL isStopping = NO;
 	}
 }
 -(void)_lockScreenDimmed:(id)dimmed {
-	wasLaunchedWithActivator = NO;
+	stravaAction = STRAVA_ACTIVATOR_NONE;
 	%orig;
 }
 %end
 
 %hook SBLockScreenViewController
 -(void)passcodeLockViewEmergencyCallButtonPressed:(id)pressed {
-	wasLaunchedWithActivator = NO;
+	stravaAction = STRAVA_ACTIVATOR_NONE;
 	%orig;
 }
 -(void)passcodeLockViewCancelButtonPressed:(id)pressed {
-	wasLaunchedWithActivator = NO;
+	stravaAction = STRAVA_ACTIVATOR_NONE;
 	%orig;
 }
 %end
@@ -79,16 +85,20 @@ static BOOL isStopping = NO;
 
 
 static void recordingRequest (CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-	if (wasLaunchedWithActivator && !recordingRequestHandled) {
-		recordingRequestHandled = YES;
-		if (isToggling) {
-			notify_post(ToggleRecordingNotification);
-		}
-		else if (isStarting) {
-			notify_post(StartRecordingNotification);
-		}
-		else if (isStopping) {
-			notify_post(StopRecordingNotification);
+	if (!recordingRequestHandled) {
+		recordingRequestHandled = YES;		
+		switch (stravaAction) {
+			case STRAVA_ACTIVATOR_TOGGLE:
+				notify_post(ToggleRecordingNotification);
+				break;
+			case STRAVA_ACTIVATOR_START:
+				notify_post(StartRecordingNotification);
+				break;
+			case STRAVA_ACTIVATOR_STOP:
+				notify_post(StopRecordingNotification);
+				break;
+			default:
+				break;
 		}
 	}
 }
@@ -123,17 +133,73 @@ static void processRecordingRequest (CFNotificationCenterRef center, void *obser
 
 static void recordingProcessed (CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
 	if (name == CFSTR(RecordingSucceededNotification)) {
-		recordingRequestHandled = YES;
-		wasLaunchedWithActivator = NO;
-		isToggling = NO;
-		isStarting = NO;
-		isStopping = NO;
+		stravaAction = STRAVA_ACTIVATOR_NONE;
 	}
 	else if (name == CFSTR(RecordingFailedNotification)) {
 		recordingRequestHandled = NO;
-		wasLaunchedWithActivator = YES;
 	}
 }
+
+
+@interface LAStravaActivator : NSObject<LAListener>
+{
+	int action;
+}
+@end
+
+@implementation LAStravaActivator
+
+- (id)initWithAction:(int) inputAction
+{
+	if ((self = [super init])) {
+		self->action = inputAction;
+	}
+	return self;
+}
+
+- (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
+	SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:StravaDisplayIdentifier];
+
+	if(stravaSBApplication) {
+		[self setStateFlags];
+
+        SBLockScreenManager *sbLockScreenManager = (SBLockScreenManager*) [%c(SBLockScreenManager) sharedInstance];
+        if ([sbLockScreenManager isUILocked]){
+            [sbLockScreenManager unlockUIFromSource:0 withOptions:nil];
+        }
+		else
+		{
+			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+			if ([[frontApp displayIdentifier] isEqualToString: StravaDisplayIdentifier]) {
+				notify_post(RecordingRequestedNotification);
+			}
+			else {
+				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplicationAnimated:stravaSBApplication];
+			}
+		}
+	}
+	else {
+	    UIAlertView *error = [[UIAlertView alloc] initWithTitle:@"Strava Activator" message:@"Strava must be installed to use Strava Activator." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"App Store", nil];
+	    [error show];
+	    [error release];
+	}
+
+	[event setHandled:YES];
+}
+
+-(void)setStateFlags {
+	recordingRequestHandled = NO;
+	stravaAction = action;
+}
+
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+	if(buttonIndex == 1) {
+	   [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"http://itunes.apple.com/app/strava-running-cycling-gps/id426826309"]];
+	}
+}
+
+@end
+
 
 %ctor {
 	if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"]) {
@@ -141,168 +207,15 @@ static void recordingProcessed (CFNotificationCenterRef center, void *observer, 
 		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, recordingProcessed, CFSTR(RecordingSucceededNotification), NULL, CFNotificationSuspensionBehaviorCoalesce);
 		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, recordingProcessed, CFSTR(RecordingFailedNotification), NULL, CFNotificationSuspensionBehaviorCoalesce);
 		%init(springBoardHooks);
+		
+		[[%c(LAActivator) sharedInstance] registerListener:[[LAStravaActivator alloc] initWithAction: STRAVA_ACTIVATOR_TOGGLE] forName:@"com.filmstarr.stravaactivator.toggle"];
+		[[%c(LAActivator) sharedInstance] registerListener:[[LAStravaActivator alloc] initWithAction: STRAVA_ACTIVATOR_START] forName:@"com.filmstarr.stravaactivator.start"];
+		[[%c(LAActivator) sharedInstance] registerListener:[[LAStravaActivator alloc] initWithAction: STRAVA_ACTIVATOR_STOP] forName:@"com.filmstarr.stravaactivator.stop"];
 	}
-	else if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.strava.stravaride"]) {
+	else if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:StravaDisplayIdentifier]) {
 		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, processRecordingRequest, CFSTR(ToggleRecordingNotification), NULL, CFNotificationSuspensionBehaviorCoalesce);
 		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, processRecordingRequest, CFSTR(StartRecordingNotification), NULL, CFNotificationSuspensionBehaviorCoalesce);
 		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, processRecordingRequest, CFSTR(StopRecordingNotification), NULL, CFNotificationSuspensionBehaviorCoalesce);
 		%init(stravaHooks);
 	}
 }
-
-
-@interface LAStravaToggleActivator : NSObject<LAListener> {}
-@end
-
-@implementation LAStravaToggleActivator
-
-- (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
-	SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:@"com.strava.stravaride"];
-
-	if(stravaSBApplication) {
-		wasLaunchedWithActivator = YES;
-		recordingRequestHandled = NO;
-		isToggling = YES;
-
-        SBLockScreenManager *sbLockScreenManager = (SBLockScreenManager*) [%c(SBLockScreenManager) sharedInstance];
-        if ([sbLockScreenManager isUILocked]){
-            [sbLockScreenManager unlockUIFromSource:0 withOptions:nil];
-        }
-		else
-		{
-			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-			if ([[frontApp displayIdentifier] isEqualToString: @"com.strava.stravaride"]) {
-				notify_post(RecordingRequestedNotification);
-			}
-			else {
-				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplicationAnimated:stravaSBApplication];
-			}
-		}
-	}
-	else {
-	    UIAlertView *error = [[UIAlertView alloc] initWithTitle:@"Strava Activator" message:@"Strava must be installed to use Strava Activator." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"App Store", nil];
-	    [error show];
-	    [error release];
-	}
-
-	[event setHandled:YES];
-}
-
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
-	if(buttonIndex == 1) {
-	   [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"http://itunes.apple.com/app/strava-running-cycling-gps/id426826309"]];
-	}
-}
-
-+ (void)load {
-	if([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"])
-	{
-	  [[%c(LAActivator) sharedInstance] registerListener:[self new] forName:@"com.filmstarr.stravaactivator.toggle"];
-	}
-}
-
-@end
-
-@interface LAStravaStartActivator : NSObject<LAListener> {}
-@end
-
-@implementation LAStravaStartActivator
-
-- (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
-	SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:@"com.strava.stravaride"];
-
-	if(stravaSBApplication) {
-		wasLaunchedWithActivator = YES;
-		recordingRequestHandled = NO;
-		isStarting = YES;
-
-        SBLockScreenManager *sbLockScreenManager = (SBLockScreenManager*) [%c(SBLockScreenManager) sharedInstance];
-        if ([sbLockScreenManager isUILocked]){
-            [sbLockScreenManager unlockUIFromSource:0 withOptions:nil];
-        }
-		else
-		{
-			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-			if ([[frontApp displayIdentifier] isEqualToString: @"com.strava.stravaride"]) {
-				notify_post(RecordingRequestedNotification);
-			}
-			else {
-				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplicationAnimated:stravaSBApplication];
-			}
-		}
-	}
-	else {
-	    UIAlertView *error = [[UIAlertView alloc] initWithTitle:@"Strava Activator" message:@"Strava must be installed to use Strava Activator." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"App Store", nil];
-	    [error show];
-	    [error release];
-	}
-
-	[event setHandled:YES];
-}
-
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
-	if(buttonIndex == 1) {
-	   [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"http://itunes.apple.com/app/strava-running-cycling-gps/id426826309"]];
-	}
-}
-
-+ (void)load {
-	if([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"])
-	{
-	  [[%c(LAActivator) sharedInstance] registerListener:[self new] forName:@"com.filmstarr.stravaactivator.start"];
-	}
-}
-
-@end
-
-@interface LAStravaStopActivator : NSObject<LAListener> {}
-@end
-
-@implementation LAStravaStopActivator
-
-- (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
-	SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:@"com.strava.stravaride"];
-
-	if(stravaSBApplication) {
-		wasLaunchedWithActivator = YES;
-		recordingRequestHandled = NO;
-		isStopping = YES;
-
-        SBLockScreenManager *sbLockScreenManager = (SBLockScreenManager*) [%c(SBLockScreenManager) sharedInstance];
-        if ([sbLockScreenManager isUILocked]){
-            [sbLockScreenManager unlockUIFromSource:0 withOptions:nil];
-        }
-		else
-		{
-			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-			if ([[frontApp displayIdentifier] isEqualToString: @"com.strava.stravaride"]) {
-				notify_post(RecordingRequestedNotification);
-			}
-			else {
-				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplicationAnimated:stravaSBApplication];
-			}
-		}
-	}
-	else {
-	    UIAlertView *error = [[UIAlertView alloc] initWithTitle:@"Strava Activator" message:@"Strava must be installed to use Strava Activator." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"App Store", nil];
-	    [error show];
-	    [error release];
-	}
-
-	[event setHandled:YES];
-}
-
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
-	if(buttonIndex == 1) {
-	   [[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"http://itunes.apple.com/app/strava-running-cycling-gps/id426826309"]];
-	}
-}
-
-+ (void)load {
-	if([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"])
-	{
-	  [[%c(LAActivator) sharedInstance] registerListener:[self new] forName:@"com.filmstarr.stravaactivator.stop"];
-	}
-}
-
-@end
