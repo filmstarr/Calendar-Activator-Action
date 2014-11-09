@@ -1,3 +1,5 @@
+THEOS_PACKAGE_DIR_NAME = debs
+
 export THEOS_DEVICE_IP=rosstafarian.local
 
 include theos/makefiles/common.mk
