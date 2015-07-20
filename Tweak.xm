@@ -23,6 +23,7 @@ enum {
 };
 
 static StravaAppDelegate *strava = nil;
+static STRVRecordControlsViewController *stravaRecordControlsViewController = nil;
 static BOOL recordingRequestHandled = YES;
 static int stravaAction = STRAVA_ACTIVATOR_NONE;
 
@@ -81,6 +82,13 @@ static int stravaAction = STRAVA_ACTIVATOR_NONE;
 }
 %end
 
+%hook STRVRecordControlsViewController
+- (void)viewDidLoad {
+	%orig;
+	stravaRecordControlsViewController = self;
+}
+%end
+
 %end
 
 
@@ -107,21 +115,20 @@ static void processRecordingRequest (CFNotificationCenterRef center, void *obser
 	if ([strava isAppInitialized])
 	{
 		//Open recording tab
-		[strava selectTab:0];
+		[strava selectTab:2];
 
 		//Perform activator action
-		NewActivityViewController *activityRecordingPageViewController = [[strava recordPageViewController] activityRecordingPageViewController];
 		if (name == CFSTR(ToggleRecordingNotification)) {
-			[activityRecordingPageViewController toggleRecording:nil];
+			[stravaRecordControlsViewController toggleRecordState:nil];
 		}
 		else if (name == CFSTR(StartRecordingNotification)) {
-			if (![[activityRecordingPageViewController recordButton] isRecording]) {
-				[activityRecordingPageViewController toggleRecording:nil];
+			if ([stravaRecordControlsViewController recordButtonState] == 0) {
+				[stravaRecordControlsViewController toggleRecordState:nil];
 			}
 		}
 		else if (name == CFSTR(StopRecordingNotification)) {
-			if ([[activityRecordingPageViewController recordButton] isRecording]) {
-				[activityRecordingPageViewController toggleRecording:nil];
+			if ([stravaRecordControlsViewController recordButtonState] == 1) {
+				[stravaRecordControlsViewController toggleRecordState:nil];
 			}	
 		}
 		notify_post(RecordingSucceededNotification);
