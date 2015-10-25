@@ -4,8 +4,7 @@ export THEOS_DEVICE_IP=rosstafarian.local
 
 include theos/makefiles/common.mk
 
-ARCHS = armv7 armv7s arm64
-TARGET = iphone:9.0
+ARCHS = armv7 arm64
 
 TWEAK_NAME = StravaActivator
 StravaActivator_LDFLAGS += -Wl,-segalign,4000
