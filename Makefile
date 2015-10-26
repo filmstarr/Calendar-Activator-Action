@@ -11,8 +11,7 @@ TWEAK_NAME = StravaActivator
 StravaActivator_FILES = $(SOURCE_FILES)
 StravaActivator_FRAMEWORKS = UIKit
 
-include $(THEOS_MAKE_PATH)/tweak.mk
-	
+include $(THEOS_MAKE_PATH)/tweak.mk	
 SUBPROJECTS += stravaActivatorPreferences
 include $(THEOS_MAKE_PATH)/aggregate.mk
 
