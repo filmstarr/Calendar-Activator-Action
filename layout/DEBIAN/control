@@ -1,7 +1,7 @@
 Package: com.filmstarr.stravaactivator
 Name: Strava Activator
-Depends: mobilesubstrate, libactivator, preferenceloader, firmware (>= 7.0)
-Version: 0.2
+Depends: mobilesubstrate, libactivator, preferenceloader, firmware (>= 9.0)
+Version: 0.3
 Architecture: iphoneos-arm
 Description: Strava integration for Activator. Start, stop or toggle Strava recording via your chosen action.
 Maintainer: filmstarr

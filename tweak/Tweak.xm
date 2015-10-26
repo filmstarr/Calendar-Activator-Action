@@ -30,64 +30,64 @@ static int stravaAction = STRAVA_ACTIVATOR_NONE;
 
 %group springBoardHooks
 
-%hook SBLockScreenManager
--(void)_finishUIUnlockFromSource:(int)source withOptions:(id)options {
-	%orig;
-	if (stravaAction != STRAVA_ACTIVATOR_NONE) {
-		SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:StravaDisplayIdentifier];
-		if (stravaSBApplication) {
-			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
-			if ([[frontApp displayIdentifier] isEqualToString: StravaDisplayIdentifier]) {
-				notify_post(RecordingRequestedNotification);
-			}
-			else {
-				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplicationAnimated:stravaSBApplication];
+	%hook SBLockScreenManager
+		-(void)_finishUIUnlockFromSource:(int)source withOptions:(id)options {
+			%orig;
+			if (stravaAction != STRAVA_ACTIVATOR_NONE) {
+				SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithBundleIdentifier:StravaDisplayIdentifier];
+				if (stravaSBApplication) {
+					SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
+					if ([[frontApp displayIdentifier] isEqualToString: StravaDisplayIdentifier]) {
+						notify_post(RecordingRequestedNotification);
+					}
+					else {
+						[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplication:stravaSBApplication];
+					}
+				}
 			}
 		}
-	}
-}
--(void)_lockScreenDimmed:(id)dimmed {
-	stravaAction = STRAVA_ACTIVATOR_NONE;
-	%orig;
-}
-%end
+		-(void)_lockScreenDimmed:(id)dimmed {
+			stravaAction = STRAVA_ACTIVATOR_NONE;
+			%orig;
+		}
+	%end
 
-%hook SBLockScreenViewController
--(void)passcodeLockViewEmergencyCallButtonPressed:(id)pressed {
-	stravaAction = STRAVA_ACTIVATOR_NONE;
-	%orig;
-}
--(void)passcodeLockViewCancelButtonPressed:(id)pressed {
-	stravaAction = STRAVA_ACTIVATOR_NONE;
-	%orig;
-}
-%end
+	%hook SBLockScreenViewController
+		-(void)passcodeLockViewEmergencyCallButtonPressed:(id)pressed {
+			stravaAction = STRAVA_ACTIVATOR_NONE;
+			%orig;
+		}
+		-(void)passcodeLockViewCancelButtonPressed:(id)pressed {
+			stravaAction = STRAVA_ACTIVATOR_NONE;
+			%orig;
+		}
+	%end
 
 %end
 
 
 %group stravaHooks
 
-%hook StravaAppDelegate
-- (void)applicationDidBecomeActive:(id)fp8 {
-	%orig;
-	strava = self;
-	notify_post(RecordingRequestedNotification);
-}
-- (void)setAppInitialized:(BOOL)fp8 {
-	%orig;
-	if (fp8) {
-		notify_post(RecordingRequestedNotification);
-	}
-}
-%end
+	%hook StravaAppDelegate
+		- (void)applicationDidBecomeActive:(id)fp8 {
+			%orig;
+			strava = self;
+			notify_post(RecordingRequestedNotification);
+		}
+		- (void)setAppInitialized:(BOOL)fp8 {
+			%orig;
+			if (fp8) {
+				notify_post(RecordingRequestedNotification);
+			}
+		}
+	%end
 
-%hook STRVRecordControlsViewController
-- (void)viewDidLoad {
-	%orig;
-	stravaRecordControlsViewController = self;
-}
-%end
+	%hook STRVRecordControlsViewController
+		- (void)viewDidLoad {
+			%orig;
+			stravaRecordControlsViewController = self;
+		}
+	%end
 
 %end
 
@@ -165,15 +165,15 @@ static void recordingProcessed (CFNotificationCenterRef center, void *observer, 
 }
 
 - (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
-	SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithDisplayIdentifier:StravaDisplayIdentifier];
+	SBApplication *stravaSBApplication = [(SBApplicationController *) [objc_getClass("SBApplicationController") sharedInstance] applicationWithBundleIdentifier:StravaDisplayIdentifier];
 
 	if(stravaSBApplication) {
 		[self setStateFlags];
 
-        SBLockScreenManager *sbLockScreenManager = (SBLockScreenManager*) [%c(SBLockScreenManager) sharedInstance];
-        if ([sbLockScreenManager isUILocked]){
-            [sbLockScreenManager unlockUIFromSource:0 withOptions:nil];
-        }
+    SBLockScreenManager *sbLockScreenManager = (SBLockScreenManager*) [%c(SBLockScreenManager) sharedInstance];
+    if ([sbLockScreenManager isUILocked]){
+        [sbLockScreenManager unlockUIFromSource:0 withOptions:nil];
+    }
 		else
 		{
 			SBApplication *frontApp = [(SpringBoard*)[UIApplication sharedApplication] _accessibilityFrontMostApplication];
@@ -181,14 +181,14 @@ static void recordingProcessed (CFNotificationCenterRef center, void *observer, 
 				notify_post(RecordingRequestedNotification);
 			}
 			else {
-				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplicationAnimated:stravaSBApplication];
+				[(SBUIController *) [objc_getClass("SBUIController") sharedInstance] activateApplication:stravaSBApplication];
 			}
 		}
 	}
 	else {
-	    UIAlertView *error = [[UIAlertView alloc] initWithTitle:@"Strava Activator" message:@"Strava must be installed to use Strava Activator." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"App Store", nil];
-	    [error show];
-	    [error release];
+    UIAlertView *error = [[UIAlertView alloc] initWithTitle:@"Strava Activator" message:@"Strava must be installed to use Strava Activator." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"App Store", nil];
+    [error show];
+    [error release];
 	}
 
 	[event setHandled:YES];

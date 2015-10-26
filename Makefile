@@ -1,15 +1,14 @@
+ARCHS = armv7 arm64
 THEOS_PACKAGE_DIR_NAME = debs
 
 export THEOS_DEVICE_IP=rosstafarian.local
 
 include theos/makefiles/common.mk
 
-ARCHS = armv7 arm64
+SOURCE_FILES=$(wildcard tweak/*.m tweak/*.mm tweak/*.x tweak/*.xm)
 
 TWEAK_NAME = StravaActivator
-StravaActivator_LDFLAGS += -Wl,-segalign,4000
-StravaActivator_CODESIGN_FLAGS = -Sentitlements.xml
-StravaActivator_FILES = Tweak.xm
+StravaActivator_FILES = $(SOURCE_FILES)
 StravaActivator_FRAMEWORKS = UIKit
 
 include $(THEOS_MAKE_PATH)/tweak.mk
