@@ -1,5 +1,6 @@
 ARCHS = armv7 arm64
 THEOS_PACKAGE_DIR_NAME = debs
+SKDVERVSION=9.2
 
 export THEOS_DEVICE_IP=rosstafarian.local
 

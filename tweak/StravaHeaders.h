@@ -5,8 +5,7 @@
 @end
 
 @interface StravaAppDelegate
-- (BOOL)isAppInitialized;
-- (void)setAppInitialized:(BOOL)fp8;
+- (BOOL)showInitialInterfaceAnimated:(BOOL)fp8;
 - (void)applicationDidBecomeActive:(id)fp8;
 - (void)selectTab:(int)fp8;
 @end

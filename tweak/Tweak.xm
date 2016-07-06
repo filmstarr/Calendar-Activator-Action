@@ -22,6 +22,7 @@ enum {
 	STRAVA_ACTIVATOR_STOP = 0x3,
 };
 
+static BOOL isAppInitialized = NO;
 static StravaAppDelegate *strava = nil;
 static STRVRecordControlsViewController *stravaRecordControlsViewController = nil;
 static BOOL recordingRequestHandled = YES;
@@ -74,9 +75,10 @@ static int stravaAction = STRAVA_ACTIVATOR_NONE;
 			strava = self;
 			notify_post(RecordingRequestedNotification);
 		}
-		- (void)setAppInitialized:(BOOL)fp8 {
+		- (void)showInitialInterfaceAnimated:(BOOL)fp8 {
 			%orig;
 			if (fp8) {
+				isAppInitialized = YES;
 				notify_post(RecordingRequestedNotification);
 			}
 		}
@@ -112,7 +114,7 @@ static void recordingRequest (CFNotificationCenterRef center, void *observer, CF
 }
 
 static void processRecordingRequest (CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-	if ([strava isAppInitialized])
+	if (isAppInitialized)
 	{
 		//Open recording tab
 		[strava selectTab:2];
